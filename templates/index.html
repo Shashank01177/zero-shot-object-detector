@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zero-Shot Object Detector | Open-Vocabulary Computer Vision</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    code, pre, .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP NAVBAR -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="scan" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-200 bg-clip-text text-transparent">ZeroShot-CV</h1>
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">OWL-ViT</span>
+          </div>
+          <p class="text-xs text-slate-400">Open-Vocabulary Zero-Shot Object Detector</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="hidden md:flex space-x-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
+        <button onclick="switchTab('playground')" id="tab-playground" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 bg-indigo-600 text-white shadow-sm flex items-center space-x-1.5">
+          <i data-lucide="image" class="w-3.5 h-3.5"></i>
+          <span>Playground</span>
+        </button>
+        <button onclick="switchTab('webcam')" id="tab-webcam" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center space-x-1.5">
+          <i data-lucide="video" class="w-3.5 h-3.5"></i>
+          <span>Live Camera</span>
+        </button>
+        <button onclick="switchTab('benchmark')" id="tab-benchmark" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center space-x-1.5">
+          <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+          <span>Evaluation (mAP)</span>
+        </button>
+        <button onclick="switchTab('theory')" id="tab-theory" class="tab-btn px-4 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 text-slate-400 hover:text-white flex items-center space-x-1.5">
+          <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+          <span>Architecture</span>
+        </button>
+      </nav>
+
+      <!-- System Status Indicators -->
+      <div class="flex items-center space-x-3 text-xs">
+        <div id="deviceBadge" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="deviceText">Device: Checking...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- 1. TAB: PLAYGROUND -->
+    <div id="view-playground" class="space-y-6">
+      
+      <!-- Top banner / Quick sample bar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-white">Instant Presets & Samples</h2>
+            <p class="text-xs text-slate-400">Click any preset scene below to test zero-shot detection instantly without uploading.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2" id="samplePills">
+          <!-- Populated by JS -->
+          <button onclick="loadSample('samples/office_desk.jpg', 'laptop, coffee mug, notebook, pen, computer mouse')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition flex items-center space-x-1.5">
+            <i data-lucide="laptop" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Office Desk</span>
+          </button>
+          <button onclick="loadSample('samples/street_traffic.jpg', 'car, red car, blue car, traffic light, building')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition flex items-center space-x-1.5">
+            <i data-lucide="car" class="w-3.5 h-3.5 text-amber-400"></i>
+            <span>Street Traffic</span>
+          </button>
+          <button onclick="loadSample('samples/living_room.jpg', 'sofa, dog, potted plant, wall art')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-200 transition flex items-center space-x-1.5">
+            <i data-lucide="home" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Living Room & Pet</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Detection Workbench Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- LEFT COLUMN: CONTROLS & QUERY INPUT (4 cols) -->
+        <div class="lg:col-span-4 space-y-5">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
+            <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+              <h3 class="text-sm font-semibold text-white flex items-center space-x-2">
+                <i data-lucide="sliders" class="w-4 h-4 text-indigo-400"></i>
+                <span>Detection Settings</span>
+              </h3>
+              <span class="text-[11px] font-mono text-slate-400" id="timingText">Ready</span>
+            </div>
+
+            <!-- Architecture Engine Switcher -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-medium text-slate-300">Model Architecture</label>
+                <span class="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
+              </div>
+              <select id="modelSelect" onchange="onModelChange()" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 transition">
+                <option value="from-scratch" selected>Custom Architecture (From Scratch)</option>
+                <option value="owlvit-base">OWL-ViT Base (Vision Transformer)</option>
+                <option value="owlv2-base">OWLv2 Base (Ensemble SOTA)</option>
+              </select>
+              <p class="text-[10px] text-slate-500 mt-1">Ground-up implementation: Conv Backbone + Anchor Proposer + RoI Align + Semantic Language Matrix.</p>
+            </div>
+
+            <!-- Upload Area -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-2">Input Image</label>
+              <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 bg-slate-950/50 rounded-xl p-5 text-center cursor-pointer transition">
+                <input type="file" id="fileInput" accept="image/*" class="hidden" />
+                <div class="flex flex-col items-center space-y-2 pointer-events-none">
+                  <div class="p-3 bg-slate-800/80 rounded-xl text-indigo-400">
+                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                  </div>
+                  <div class="text-xs text-slate-300 font-medium">Click to upload or drag & drop</div>
+                  <div class="text-[11px] text-slate-500">PNG, JPG, WEBP up to 25MB</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Free-form Natural Language Queries -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-xs font-medium text-slate-300">Open-Vocabulary Queries</label>
+                <span class="text-[10px] text-indigo-400 font-medium">Comma-separated</span>
+              </div>
+              <textarea id="queriesInput" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition" placeholder="e.g. laptop, coffee mug, red car, dog, sunglasses"></textarea>
+              
+              <!-- Quick Prompt Suggestions -->
+              <div class="mt-2 flex flex-wrap gap-1.5">
+                <button type="button" onclick="appendQuery('person')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700/60">+ person</button>
+                <button type="button" onclick="appendQuery('coffee cup')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700/60">+ coffee cup</button>
+                <button type="button" onclick="appendQuery('chair')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700/60">+ chair</button>
+                <button type="button" onclick="appendQuery('smartphone')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700/60">+ smartphone</button>
+                <button type="button" onclick="appendQuery('backpack')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[11px] text-slate-300 border border-slate-700/60">+ backpack</button>
+              </div>
+            </div>
+
+            <!-- Confidence Threshold Slider -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-medium">Confidence Threshold</span>
+                <span id="thresholdVal" class="font-mono text-indigo-400 font-semibold">0.15</span>
+              </div>
+              <input type="range" id="thresholdSlider" min="0.02" max="0.90" step="0.01" value="0.15" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>0.02 (High Recall)</span>
+                <span>0.90 (High Precision)</span>
+              </div>
+            </div>
+
+            <!-- NMS IoU Threshold Slider -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-300 font-medium">NMS IoU Filter</span>
+                <span id="nmsVal" class="font-mono text-indigo-400 font-semibold">0.45</span>
+              </div>
+              <input type="range" id="nmsSlider" min="0.05" max="0.95" step="0.05" value="0.45" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
+              <div class="flex justify-between text-[10px] text-slate-500">
+                <span>Aggressive Suppression</span>
+                <span>Allow Overlap</span>
+              </div>
+            </div>
+
+            <!-- Run Detection Button -->
+            <button id="runBtn" onclick="runDetection()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-500 text-white font-semibold text-xs tracking-wide shadow-lg shadow-indigo-600/25 transition flex items-center justify-center space-x-2">
+              <i data-lucide="scan-search" class="w-4 h-4"></i>
+              <span>Detect Objects (Zero-Shot)</span>
+            </button>
+          </div>
+
+          <!-- Export Box -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+            <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+              <i data-lucide="download" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Export Annotations</span>
+            </h4>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <button onclick="downloadAnnotatedImage()" id="btnDownloadImg" disabled class="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700/60 font-medium transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="file-image" class="w-3.5 h-3.5 text-indigo-400"></i>
+                <span>Image (JPG)</span>
+              </button>
+              <button onclick="exportData('json')" id="btnDownloadJson" disabled class="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700/60 font-medium transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="code" class="w-3.5 h-3.5 text-cyan-400"></i>
+                <span>Raw JSON</span>
+              </button>
+              <button onclick="exportData('coco')" id="btnDownloadCoco" disabled class="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700/60 font-medium transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="database" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>COCO JSON</span>
+              </button>
+              <button onclick="exportData('yolo')" id="btnDownloadYolo" disabled class="p-2.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700/60 font-medium transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>YOLO TXT</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: VISUAL CANVAS & CROPS & STATS (8 cols) -->
+        <div class="lg:col-span-8 space-y-6">
+          
+          <!-- Image Canvas Card -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="eye" class="w-4 h-4 text-indigo-400"></i>
+                <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Detection Canvas</h3>
+              </div>
+              <div id="statsPill" class="hidden text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 flex items-center space-x-1.5">
+                <span id="objCountBadge" class="font-bold text-indigo-400">0</span>
+                <span>objects detected</span>
+              </div>
+            </div>
+
+            <!-- Canvas viewport -->
+            <div class="relative bg-slate-950 flex items-center justify-center min-h-[440px] max-h-[580px] p-2 overflow-hidden">
+              <img id="previewImage" src="/samples/office_desk.jpg" alt="Canvas" class="max-h-[560px] max-w-full object-contain rounded-lg shadow-inner transition-all duration-300" />
+              
+              <!-- Loader overlay -->
+              <div id="canvasLoader" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-20">
+                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <div class="text-xs font-medium text-slate-200">Evaluating multi-modal Vision Transformer tokens...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detected Objects Summary Cards & Individual Crops -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center space-x-2">
+                <i data-lucide="grid" class="w-4 h-4 text-indigo-400"></i>
+                <h4 class="text-xs font-semibold text-white uppercase tracking-wider">Detected Object Crops & Classes</h4>
+              </div>
+              <div id="classBadges" class="flex flex-wrap gap-1.5">
+                <!-- Class badges -->
+              </div>
+            </div>
+
+            <!-- Crops Horizontal Gallery -->
+            <div id="cropGallery" class="flex items-center space-x-3 overflow-x-auto py-2 custom-scrollbar min-h-[90px]">
+              <div class="text-xs text-slate-500 italic py-4">Execute detection to view cropped object instances and bounding boxes.</div>
+            </div>
+
+            <!-- Bounding Box Table Details -->
+            <div class="overflow-x-auto">
+              <table id="detsTable" class="w-full text-left text-xs border-collapse hidden">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                    <th class="py-2 px-3">#</th>
+                    <th class="py-2 px-3">Label</th>
+                    <th class="py-2 px-3">Confidence</th>
+                    <th class="py-2 px-3">Bounding Box [xmin, ymin, xmax, ymax]</th>
+                    <th class="py-2 px-3 text-right">Area (px²)</th>
+                  </tr>
+                </thead>
+                <tbody id="detsTableBody" class="divide-y divide-slate-800/60 font-mono text-slate-300">
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 2. TAB: WEBCAM -->
+    <div id="view-webcam" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="video" class="w-5 h-5 text-indigo-400"></i>
+              <span>Live Webcam Zero-Shot Detector</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Capture live frames directly from your browser camera and stream them to the zero-shot model.</p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <button id="camToggleBtn" onclick="toggleCamera()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md transition flex items-center space-x-2">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span id="camToggleText">Start Camera</span>
+            </button>
+            <button id="camSnapBtn" onclick="snapAndDetect()" disabled class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700 text-xs font-semibold transition flex items-center space-x-2">
+              <i data-lucide="camera" class="w-4 h-4 text-emerald-400"></i>
+              <span>Capture & Detect</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <!-- Video Stream -->
+          <div class="relative bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden aspect-video flex items-center justify-center">
+            <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <div id="webcamPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center space-y-2 text-slate-500">
+              <i data-lucide="camera-off" class="w-8 h-8"></i>
+              <span class="text-xs">Camera is stopped. Click 'Start Camera' to begin.</span>
+            </div>
+          </div>
+          <!-- Detection Result from Camera -->
+          <div class="relative bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden aspect-video flex items-center justify-center">
+            <img id="webcamResultImg" class="w-full h-full object-contain hidden" alt="Webcam detection" />
+            <div id="webcamResultPlaceholder" class="flex flex-col items-center justify-center space-y-2 text-slate-500">
+              <i data-lucide="scan" class="w-8 h-8"></i>
+              <span class="text-xs">Annotated camera output will appear here.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. TAB: BENCHMARK & EVALUATION -->
+    <div id="view-benchmark" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center space-x-2">
+              <i data-lucide="bar-chart-2" class="w-5 h-5 text-indigo-400"></i>
+              <span>Zero-Shot Detection Benchmark & Metrics</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">Calculates Mean Average Precision (mAP@50, mAP@75, mAP@[50:95]), Precision, and Recall on ground-truth annotations.</p>
+          </div>
+          <button onclick="fetchBenchmark()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Run Benchmark</span>
+          </button>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="kpiCards">
+          <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl">
+            <div class="text-[11px] font-medium text-slate-400">mAP @ 0.50 (VOC)</div>
+            <div class="text-2xl font-bold font-mono text-emerald-400 mt-1" id="kpiMap50">--</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Overlap threshold 50%</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl">
+            <div class="text-[11px] font-medium text-slate-400">mAP @ 0.75 (Strict)</div>
+            <div class="text-2xl font-bold font-mono text-indigo-400 mt-1" id="kpiMap75">--</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Overlap threshold 75%</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl">
+            <div class="text-[11px] font-medium text-slate-400">mAP @ [0.50:0.95] (COCO)</div>
+            <div class="text-2xl font-bold font-mono text-cyan-400 mt-1" id="kpiMapCoco">--</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Primary COCO benchmark</div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800/80 p-4 rounded-xl">
+            <div class="text-[11px] font-medium text-slate-400">Overall F1-Score</div>
+            <div class="text-2xl font-bold font-mono text-amber-400 mt-1" id="kpiF1">--</div>
+            <div class="text-[10px] text-slate-500 mt-0.5">Harmonic precision-recall</div>
+          </div>
+        </div>
+
+        <!-- Per-class breakdown table -->
+        <div class="space-y-3">
+          <h4 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Per-Class Zero-Shot Performance</h4>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider bg-slate-950/40">
+                  <th class="py-2.5 px-3">Class Name</th>
+                  <th class="py-2.5 px-3">Ground Truth</th>
+                  <th class="py-2.5 px-3">Predictions</th>
+                  <th class="py-2.5 px-3">True Positives</th>
+                  <th class="py-2.5 px-3">Precision</th>
+                  <th class="py-2.5 px-3">Recall</th>
+                  <th class="py-2.5 px-3">F1-Score</th>
+                </tr>
+              </thead>
+              <tbody id="benchmarkTableBody" class="divide-y divide-slate-800/60 font-mono text-slate-300">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. TAB: THEORY & ARCHITECTURE -->
+    <div id="view-theory" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 max-w-4xl mx-auto">
+        <div class="border-b border-slate-800 pb-4">
+          <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+            <i data-lucide="book-open" class="w-5 h-5 text-indigo-400"></i>
+            <span>Understanding Zero-Shot Object Detection</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-1">How open-vocabulary multimodal vision-language models locate objects without training on predefined labels.</p>
+        </div>
+
+        <!-- Core Concepts Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold text-xs">1</div>
+            <h4 class="text-sm font-semibold text-slate-200">Open-Vocabulary Vision Transformer</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Standard detectors (like standard YOLO or Faster R-CNN) have fixed classifier heads with fixed classes (e.g. 80 COCO classes). In contrast, OWLv2 replaces fixed classification weights with text embeddings produced by a language encoder (like CLIP).
+            </p>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold text-xs">2</div>
+            <h4 class="text-sm font-semibold text-slate-200">Multimodal Joint Embedding Space</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Image patches and textual prompt tokens are projected into the same high-dimensional embedding space. Dot product similarity between visual patch tokens and text query embeddings directly determines class presence scores.
+            </p>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">3</div>
+            <h4 class="text-sm font-semibold text-slate-200">Class-Agnostic Box Regression</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              A lightweight MLP head predicts bounding box coordinates \([x, y, w, h]\) relative to patch tokens. Because the box regressor is class-agnostic, it can localize novel, unseen objects with precision.
+            </p>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-2">
+            <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">4</div>
+            <h4 class="text-sm font-semibold text-slate-200">Non-Maximum Suppression (NMS)</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              When multiple candidate tokens fire for the same physical object, Non-Maximum Suppression calculates the Intersection-over-Union (IoU) and retains only the highest-scoring candidate, preventing duplicate boxes.
+            </p>
+          </div>
+        </div>
+
+        <!-- Mathematical Formulation -->
+        <div class="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-3 font-mono text-xs">
+          <div class="text-indigo-400 font-semibold uppercase tracking-wider text-[11px]">Mathematical Foundation</div>
+          <div class="bg-slate-900/80 p-3 rounded-lg text-slate-300 overflow-x-auto leading-relaxed">
+            Similarity Score: S(r, q) = ( v_r · w_q ) / ( ||v_r|| * ||w_q|| )<br/>
+            IoU(Box_A, Box_B) = Area(Box_A ∩ Box_B) / Area(Box_A ∪ Box_B)
+          </div>
+          <p class="text-slate-400 font-sans text-xs">
+            Where \(v_r\) is the visual representation vector of region \(r\) and \(w_q\) is the normalized text embedding of query \(q\).
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
+    Zero-Shot Object Detection Computer Vision System &copy; 2026. Powered by Open-Vocabulary Transformers.
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentImageBase64 = null;
+    let currentDetections = [];
+    let currentExports = {};
+    let webcamStream = null;
+
+    // Initialize lucide icons
+    lucide.createIcons();
+
+    // Fetch initial status
+    async function checkStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        document.getElementById('deviceText').innerText = `${data.model.toUpperCase()} (${data.device.toUpperCase()})`;
+      } catch (err) {
+        document.getElementById('deviceText').innerText = "System Offline";
+      }
+    }
+    checkStatus();
+
+    // Tab switching
+    function switchTab(tabName) {
+      ['playground', 'webcam', 'benchmark', 'theory'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${t}`);
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      });
+
+      document.getElementById(`view-${tabName}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-${tabName}`);
+      activeBtn.classList.remove('text-slate-400');
+      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow-sm');
+
+      if (tabName === 'benchmark') {
+        fetchBenchmark();
+      }
+      lucide.createIcons();
+    }
+
+    // Sliders sync
+    document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+      document.getElementById('thresholdVal').innerText = parseFloat(e.target.value).toFixed(2);
+    });
+    document.getElementById('nmsSlider').addEventListener('input', (e) => {
+      document.getElementById('nmsVal').innerText = parseFloat(e.target.value).toFixed(2);
+    });
+
+    // File input & Drag-and-drop
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('border-indigo-500');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-indigo-500'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-indigo-500');
+      if (e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentImageBase64 = e.target.result;
+        document.getElementById('previewImage').src = currentImageBase64;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function onModelChange() {
+      const selected = document.getElementById('modelSelect').value;
+      document.getElementById('timingText').innerText = "Switching...";
+      try {
+        const res = await fetch('/api/switch_model', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: selected })
+        });
+        const data = await res.json();
+        if (data.success) {
+          checkStatus();
+          document.getElementById('timingText').innerText = "Switched to " + selected;
+        } else {
+          alert("Could not switch model: " + data.error);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Load sample preset
+    function loadSample(url, queries) {
+      document.getElementById('queriesInput').value = queries;
+      document.getElementById('previewImage').src = url;
+      currentImageBase64 = url;
+    }
+
+    function appendQuery(q) {
+      const input = document.getElementById('queriesInput');
+      const val = input.value.trim();
+      if (!val) {
+        input.value = q;
+      } else {
+        input.value = `${val}, ${q}`;
+      }
+    }
+
+    // Run Detection
+    async function runDetection() {
+      const queries = document.getElementById('queriesInput').value.trim();
+      if (!queries) {
+        alert("Please enter one or more text queries to detect.");
+        return;
+      }
+
+      const threshold = parseFloat(document.getElementById('thresholdSlider').value);
+      const nms = parseFloat(document.getElementById('nmsSlider').value);
+      const previewImg = document.getElementById('previewImage');
+
+      document.getElementById('canvasLoader').classList.remove('hidden');
+      document.getElementById('timingText').innerText = "Processing...";
+
+      try {
+        let payload = {
+          queries: queries,
+          threshold: threshold,
+          nms: nms
+        };
+
+        if (currentImageBase64) {
+          payload.image = currentImageBase64;
+        } else {
+          payload.image = previewImg.src;
+        }
+
+        const res = await fetch('/api/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!data.success) {
+          throw new Error(data.error || "Detection failed");
+        }
+
+        // Render annotated image
+        previewImg.src = data.annotated_image;
+        currentDetections = data.detections;
+        currentExports = data.exports;
+
+        // Enable export buttons
+        ['btnDownloadImg', 'btnDownloadJson', 'btnDownloadCoco', 'btnDownloadYolo'].forEach(id => {
+          document.getElementById(id).removeAttribute('disabled');
+        });
+
+        // Update stats
+        document.getElementById('statsPill').classList.remove('hidden');
+        document.getElementById('objCountBadge').innerText = data.detections_count;
+        document.getElementById('timingText').innerText = `${data.inference_time_ms} ms (${data.detections_count} found)`;
+
+        // Render class badges
+        const badgesContainer = document.getElementById('classBadges');
+        badgesContainer.innerHTML = '';
+        Object.entries(data.class_distribution).forEach(([cls, count]) => {
+          const badge = document.createElement('span');
+          badge.className = "px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-[10px] font-semibold";
+          badge.innerText = `${cls}: ${count}`;
+          badgesContainer.appendChild(badge);
+        });
+
+        // Render Crops Gallery
+        const cropGallery = document.getElementById('cropGallery');
+        cropGallery.innerHTML = '';
+        if (data.crops && data.crops.length > 0) {
+          data.crops.forEach(c => {
+            const card = document.createElement('div');
+            card.className = "flex-shrink-0 bg-slate-950 border border-slate-800 rounded-xl p-2 flex flex-col items-center space-y-1.5 hover:border-indigo-500/50 transition cursor-pointer";
+            card.innerHTML = `
+              <img src="${c.image_b64}" class="h-16 w-20 object-contain rounded bg-slate-900" />
+              <div class="text-[11px] font-medium text-slate-200">${c.label}</div>
+              <div class="text-[10px] font-mono text-indigo-400">${Math.round(c.score * 100)}%</div>
+            `;
+            cropGallery.appendChild(card);
+          });
+        } else {
+          cropGallery.innerHTML = `<div class="text-xs text-slate-500 italic py-2">No objects passed threshold. Try lowering the confidence slider.</div>`;
+        }
+
+        // Render Table
+        const table = document.getElementById('detsTable');
+        const tbody = document.getElementById('detsTableBody');
+        tbody.innerHTML = '';
+        if (data.detections && data.detections.length > 0) {
+          table.classList.remove('hidden');
+          data.detections.forEach((d, idx) => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-800/40 transition";
+            const [x1, y1, x2, y2] = d.box;
+            const area = Math.round((x2 - x1) * (y2 - y1));
+            tr.innerHTML = `
+              <td class="py-2 px-3 text-slate-500">${idx + 1}</td>
+              <td class="py-2 px-3 font-sans font-medium text-white">${d.label}</td>
+              <td class="py-2 px-3 text-indigo-400">${(d.score * 100).toFixed(1)}%</td>
+              <td class="py-2 px-3 text-slate-400">[${x1}, ${y1}, ${x2}, ${y2}]</td>
+              <td class="py-2 px-3 text-right text-slate-400">${area}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          table.classList.add('hidden');
+        }
+
+      } catch (err) {
+        alert("Detection error: " + err.message);
+        document.getElementById('timingText').innerText = "Failed";
+      } finally {
+        document.getElementById('canvasLoader').classList.add('hidden');
+        lucide.createIcons();
+      }
+    }
+
+    // Export handlers
+    function downloadAnnotatedImage() {
+      const link = document.createElement('a');
+      link.download = "zero_shot_annotated.jpg";
+      link.href = document.getElementById('previewImage').src;
+      link.click();
+    }
+
+    function exportData(type) {
+      let dataStr = "";
+      let filename = "";
+      if (type === "json") {
+        dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentDetections, null, 2));
+        filename = "zero_shot_detections.json";
+      } else if (type === "coco") {
+        dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentExports.coco, null, 2));
+        filename = "coco_annotations.json";
+      } else if (type === "yolo") {
+        dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(currentExports.yolo || "");
+        filename = "yolo_annotations.txt";
+      }
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataStr;
+      link.click();
+    }
+
+    // Webcam implementation
+    async function toggleCamera() {
+      const video = document.getElementById('webcamVideo');
+      const placeholder = document.getElementById('webcamPlaceholder');
+      const snapBtn = document.getElementById('camSnapBtn');
+      const toggleText = document.getElementById('camToggleText');
+
+      if (!webcamStream) {
+        try {
+          webcamStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+          video.srcObject = webcamStream;
+          placeholder.classList.add('hidden');
+          snapBtn.removeAttribute('disabled');
+          toggleText.innerText = "Stop Camera";
+        } catch (err) {
+          alert("Could not access camera: " + err.message);
+        }
+      } else {
+        webcamStream.getTracks().forEach(t => t.stop());
+        webcamStream = null;
+        video.srcObject = null;
+        placeholder.classList.remove('hidden');
+        snapBtn.setAttribute('disabled', 'true');
+        toggleText.innerText = "Start Camera";
+      }
+    }
+
+    async function snapAndDetect() {
+      const video = document.getElementById('webcamVideo');
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const b64 = canvas.toDataURL('image/jpeg', 0.9);
+
+      const queries = document.getElementById('queriesInput').value.trim() || "person, face, phone, cup, laptop";
+      
+      try {
+        const res = await fetch('/api/detect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: b64,
+            queries: queries,
+            threshold: parseFloat(document.getElementById('thresholdSlider').value),
+            nms: parseFloat(document.getElementById('nmsSlider').value)
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const resImg = document.getElementById('webcamResultImg');
+          resImg.src = data.annotated_image;
+          resImg.classList.remove('hidden');
+          document.getElementById('webcamResultPlaceholder').classList.add('hidden');
+        }
+      } catch (e) {
+        alert("Camera detection error: " + e.message);
+      }
+    }
+
+    // Benchmark fetching
+    async function fetchBenchmark() {
+      try {
+        const res = await fetch('/api/benchmark');
+        const data = await res.json();
+
+        document.getElementById('kpiMap50').innerText = `${(data.coco_metrics['mAP@50'] * 100).toFixed(1)}%`;
+        document.getElementById('kpiMap75').innerText = `${(data.coco_metrics['mAP@75'] * 100).toFixed(1)}%`;
+        document.getElementById('kpiMapCoco').innerText = `${(data.coco_metrics['mAP@50:95'] * 100).toFixed(1)}%`;
+        document.getElementById('kpiF1').innerText = `${(data.metrics.overall_f1 * 100).toFixed(1)}%`;
+
+        const tbody = document.getElementById('benchmarkTableBody');
+        tbody.innerHTML = '';
+        Object.entries(data.metrics.classes).forEach(([cls, cdata]) => {
+          const tr = document.createElement('tr');
+          tr.className = "hover:bg-slate-800/40 transition";
+          tr.innerHTML = `
+            <td class="py-2.5 px-3 font-sans font-medium text-white">${cls}</td>
+            <td class="py-2.5 px-3 text-slate-400">${cdata.ground_truth_count}</td>
+            <td class="py-2.5 px-3 text-slate-400">${cdata.predicted_count}</td>
+            <td class="py-2.5 px-3 text-emerald-400">${cdata.true_positives}</td>
+            <td class="py-2.5 px-3 text-indigo-400">${(cdata.precision * 100).toFixed(1)}%</td>
+            <td class="py-2.5 px-3 text-cyan-400">${(cdata.recall * 100).toFixed(1)}%</td>
+            <td class="py-2.5 px-3 text-amber-400 font-bold">${(cdata.f1_score * 100).toFixed(1)}%</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("Benchmark error:", err);
+      }
+    }
+
+    // Initial setup
+    document.getElementById('queriesInput').value = "laptop, coffee mug, notebook, pen, computer mouse";
+  </script>
+</body>
+</html>

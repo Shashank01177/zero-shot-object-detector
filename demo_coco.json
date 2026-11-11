@@ -1,0 +1,132 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "street_traffic.jpg",
+      "width": 800,
+      "height": 600
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "blue car",
+      "supercategory": "object"
+    },
+    {
+      "id": 2,
+      "name": "building",
+      "supercategory": "object"
+    },
+    {
+      "id": 3,
+      "name": "traffic light",
+      "supercategory": "object"
+    },
+    {
+      "id": 4,
+      "name": "red car",
+      "supercategory": "object"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 1,
+      "bbox": [
+        270.9,
+        270.3,
+        254.1,
+        206.7
+      ],
+      "area": 52522.47,
+      "score": 0.946,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 1,
+      "category_id": 2,
+      "bbox": [
+        152.6,
+        306.3,
+        286.4,
+        129.3
+      ],
+      "area": 37031.52,
+      "score": 0.889,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 1,
+      "category_id": 3,
+      "bbox": [
+        81.1,
+        263.1,
+        197.7,
+        174.4
+      ],
+      "area": 34478.88,
+      "score": 0.791,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 1,
+      "category_id": 3,
+      "bbox": [
+        285.1,
+        157.0,
+        148.6,
+        111.8
+      ],
+      "area": 16613.48,
+      "score": 0.755,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 1,
+      "category_id": 1,
+      "bbox": [
+        423.6,
+        157.5,
+        278.6,
+        229.2
+      ],
+      "area": 63855.12,
+      "score": 0.616,
+      "iscrowd": 0
+    },
+    {
+      "id": 6,
+      "image_id": 1,
+      "category_id": 2,
+      "bbox": [
+        391.2,
+        319.0,
+        333.0,
+        230.3
+      ],
+      "area": 76689.9,
+      "score": 0.536,
+      "iscrowd": 0
+    },
+    {
+      "id": 7,
+      "image_id": 1,
+      "category_id": 4,
+      "bbox": [
+        428.1,
+        110.3,
+        356.9,
+        203.7
+      ],
+      "area": 72700.53,
+      "score": 0.48,
+      "iscrowd": 0
+    }
+  ]
+}

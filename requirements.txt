@@ -1,0 +1,11 @@
+# Core Deep Learning & Computer Vision
+torch>=2.2.0
+torchvision>=0.17.0
+transformers>=4.38.0
+pillow>=10.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+
+# Web Application & API
+flask>=3.0.0

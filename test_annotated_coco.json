@@ -1,0 +1,104 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "office_desk.jpg",
+      "width": 800,
+      "height": 600
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "coffee mug",
+      "supercategory": "object"
+    },
+    {
+      "id": 2,
+      "name": "notebook",
+      "supercategory": "object"
+    },
+    {
+      "id": 3,
+      "name": "laptop",
+      "supercategory": "object"
+    },
+    {
+      "id": 4,
+      "name": "mouse",
+      "supercategory": "object"
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 1,
+      "bbox": [
+        31.0,
+        259.6,
+        319.8,
+        230.1
+      ],
+      "area": 73585.98,
+      "score": 0.922,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 1,
+      "category_id": 2,
+      "bbox": [
+        336.1,
+        225.9,
+        283.4,
+        218.3
+      ],
+      "area": 61866.22,
+      "score": 0.857,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 1,
+      "category_id": 3,
+      "bbox": [
+        343.4,
+        127.9,
+        161.9,
+        214.2
+      ],
+      "area": 34678.98,
+      "score": 0.823,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 1,
+      "category_id": 4,
+      "bbox": [
+        214.1,
+        205.7,
+        338.5,
+        225.2
+      ],
+      "area": 76230.2,
+      "score": 0.816,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 1,
+      "category_id": 3,
+      "bbox": [
+        430.4,
+        196.0,
+        330.7,
+        214.1
+      ],
+      "area": 70802.87,
+      "score": 0.417,
+      "iscrowd": 0
+    }
+  ]
+}
